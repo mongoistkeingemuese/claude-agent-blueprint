@@ -1,0 +1,68 @@
+{
+  "orchestrator": {
+    "status": "idle",
+    "phase": null,
+    "base_branch": "main"
+  },
+  "features": {
+    "FEAT-001": {
+      "title": "User registration with email verification",
+      "status": "done",
+      "deps": [],
+      "plan": "docs/backlog/features/FEAT-001_user_registration.md",
+      "branch": "feat/FEAT-001_user_registration",
+      "merged": true,
+      "skill": null,
+      "phase": "learn"
+    },
+    "FEAT-002": {
+      "title": "Password reset flow",
+      "status": "approved",
+      "deps": ["FEAT-001"],
+      "plan": "docs/backlog/features/FEAT-002_password_reset.md",
+      "branch": null,
+      "merged": false,
+      "skill": null
+    },
+    "FEAT-003": {
+      "title": "Admin dashboard with role management",
+      "status": "approved",
+      "deps": ["FEAT-001"],
+      "plan": "docs/backlog/features/FEAT-003_admin_dashboard.md",
+      "branch": null,
+      "merged": false,
+      "skill": "ui"
+    }
+  },
+  "bugfixes": {
+    "BUG-001": {
+      "title": "Login fails with special characters in password",
+      "status": "done",
+      "deps": [],
+      "plan": "docs/backlog/bugfix/BUG-001_login_special_chars.md",
+      "branch": "fix/BUG-001_login_special_chars",
+      "merged": true,
+      "skill": null,
+      "phase": "learn"
+    }
+  },
+  "refactors": {
+    "REFAC-001": {
+      "title": "Extract auth middleware into shared module",
+      "status": "approved",
+      "deps": ["FEAT-001"],
+      "plan": "docs/backlog/refactor/REFAC-001_extract_auth_middleware.md",
+      "branch": null,
+      "merged": false,
+      "skill": null
+    }
+  },
+  "tests": {},
+  "queue": ["FEAT-002", "FEAT-003", "REFAC-001"],
+  "active": [],
+  "history": [
+    {"id": "FEAT-001", "result": "done", "timestamp": "2025-01-15T10:30:00Z"},
+    {"id": "BUG-001", "result": "done", "timestamp": "2025-01-15T14:20:00Z"}
+  ],
+  "errors": []
+}

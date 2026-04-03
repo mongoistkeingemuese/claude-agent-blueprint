@@ -1,0 +1,93 @@
+# CLAUDE.md -- {Project Name}
+
+This file is the single source of truth for AI assistants working on this codebase.
+
+## Project Overview
+
+**{Project Name}** is {brief description}.
+
+**Tech stack:** {list technologies}
+
+## Repository Structure
+
+```
+{project}/
+├── {your structure here}
+├── docs/
+│   ├── backlog/
+│   │   ├── features/        # FEAT-XXX plans
+│   │   ├── bugfix/          # BUG-XXX plans
+│   │   └── refactor/        # REFAC-XXX plans
+│   ├── templates/           # Plan templates
+│   └── orchestrator_state.json
+├── .claude/
+│   └── commands/            # Agent system
+└── ...
+```
+
+## Development Commands
+
+```bash
+# {Adapt to your project}
+# Start: ...
+# Test: ...
+# Lint: ...
+# Build: ...
+```
+
+## Code Conventions
+
+{Define your conventions here. The /review agent checks against these.}
+
+### Documentation Standard
+
+```
+Purpose: What the object does.
+Usage: How it is used.
+Rationale: Why this implementation was chosen.
+Feature: FEAT-XXX (task IDs that created or modified this code)
+```
+
+## Testing
+
+{Describe your test frameworks, conventions, and how to run tests.}
+
+## Agent System
+
+See `.claude/commands/README.md` for full documentation.
+
+### Agent Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/orchestrator` | Autonomous task pipeline (queue manager) |
+| `/execute-task` | Task worker: branch, implement, review, test, learn, merge |
+| `/task` | Task planning with validation |
+| `/validate` | Deep plan validation against codebase |
+| `/state` | Show project status (read-only) |
+| `/resolve` | Merge conflict resolution |
+| `/review` | White-box code review |
+| `/test` | Black-box acceptance tests |
+| `/testfix` | Intelligent test failure analysis |
+| `/learn` | Post-task learning |
+{Add your specialists here}
+
+### Skill Routing
+
+| Skill | Specialist | Trigger Keywords |
+|-------|-----------|-----------------|
+{Add your skills here}
+
+### Task Pipeline
+
+```
+/task -> /execute-task -> /review -> /test -> /testfix -> /learn
+```
+
+## Commit Format
+
+```
+[type]([scope]): [summary]
+```
+
+Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
