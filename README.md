@@ -11,7 +11,7 @@ AI coding assistants are powerful, but complex projects need structure:
 - **Without structure:** "implement this feature" leads to forgotten edge cases, no tests, inconsistent quality, and no learning from mistakes.
 - **With this system:** tasks are planned with testable criteria, implemented in isolation, reviewed by a separate agent, tested by a black-box tester, and lessons are written back into the agents themselves.
 
-This system was extracted from a production project ([Cortex 3D HMI Platform](https://github.com/mongoistkeingemuese/3DViewer)) where it managed 50+ tasks across 800+ tests with a 100% success rate and <0.5 human interventions per session.
+This system was extracted from a production project (130k+ lines, 200+ features, 350+ tasks, Python/FastAPI + React/TypeScript, 3D HMI platform — coming soon) where the agent pipeline managed 2000+ tests with <0.5 human interventions per session.
 
 ## How to Use It
 
@@ -311,6 +311,36 @@ See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for detailed instructions
 
 ## Key Concepts
 
+### In-Code Documentation (critical)
+
+Every class and function gets a structured comment:
+
+```python
+"""
+Purpose: What the object does.
+Usage: How it is used within the system.
+Rationale: Why this specific implementation was chosen.
+Feature: FEAT-044, BUG-012
+"""
+```
+
+```typescript
+/**
+ * Purpose: Manages WebSocket reconnection with exponential backoff.
+ * Usage: Instantiated by ConnectionManager on broker config change.
+ * Rationale: Native WebSocket has no auto-reconnect; libraries add 50KB+ bundle size.
+ * Feature: FEAT-055, BUG-023
+ */
+```
+
+The `Feature:` line is the most important part — it links every piece of code to the task that created or modified it. This creates **long-term traceability** across the entire codebase without relying on git blame:
+
+- **Creating** new code: add the current task ID
+- **Modifying** existing code: append the current task ID to the existing list
+- **Encountering** code without a `Feature:` line: backfill it from git history or mark as `Feature: pre-tracking`
+
+Over time, every function in the codebase carries its full history. You can grep for `FEAT-044` and instantly find all code that was created or touched by that task — across all files, without opening git.
+
 ### Separation of Implementation and Testing
 The test agent never sees the implementation code. It writes tests purely from the task plan's acceptance criteria, test specification, and edge cases. This catches bugs that the implementer's bias would miss.
 
@@ -328,7 +358,7 @@ Agents collect out-of-scope findings during pipeline execution (cleanup opportun
 
 ## Built With This
 
-This agent system was developed and battle-tested on the [Cortex 3D HMI Platform](https://github.com/mongoistkeingemuese/3DViewer) -- a production web-based 3D digital twin with Python/FastAPI backend, React/TypeScript frontend, and a plugin system. The system managed 50+ autonomous task executions across 800+ tests.
+This agent system was developed and battle-tested on a production 3D HMI platform (130k+ lines, 200+ features, 350+ tasks, 2 months development) -- a web-based digital twin with Python/FastAPI backend, React/TypeScript frontend, and a plugin system. 2000+ tests, all managed through this pipeline. The source project is currently private and will be published as open source soon.
 
 ## Limitations
 
