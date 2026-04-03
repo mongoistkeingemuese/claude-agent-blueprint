@@ -28,6 +28,18 @@ the task plan. You change NO code -- you only deliver a findings report.
 - Changed files (`git diff --name-only`)
 - Diff (`git diff`)
 - Skill (for skill-specific checklist)
+- Plan-Version (version number from task plan header, default: 1)
+
+### Plan-Version Check
+
+Before starting review phases:
+1. `PLAN_VERSION_RECEIVED` = Plan-Version from the caller prompt
+2. `PLAN_VERSION_CURRENT` = Plan-Version from task plan header (`grep "Plan-Version" {TASK_FILE} | awk '{print $NF}'`)
+3. If `PLAN_VERSION_RECEIVED != PLAN_VERSION_CURRENT`:
+   ```
+   WARNING: PLAN-VERSION MISMATCH: Received V{N}, current plan is V{M}.
+   Review works against current plan version V{M}.
+   ```
 
 ---
 
@@ -72,9 +84,25 @@ the task plan. You change NO code -- you only deliver a findings report.
 
 Check against the project's CLAUDE.md conventions. Common checks:
 - Documentation/docstrings present on new code?
+- Feature traceability: `Feature:` line with task ID(s) in docstrings?
+  - On changed code: current task ID appended to existing Feature list?
 - Type safety (no `any` types, proper typing)?
 - Function length reasonable?
 - Project-specific patterns followed?
+
+---
+
+## Phase 4b: Cross-Cutting Checklist (from Task Plan)
+
+If the task plan contains a cross-cutting checklist:
+- Each checked item: verify the implementation actually fulfills it
+- Each "n/a" item: plausible? Should it have been relevant?
+- Focus on:
+  - **Legacy:** Were promised cleanups performed?
+  - **Tests:** Do the test files/functions named in the plan exist?
+  - **Persistence:** DB migration present? State migration?
+  - **Documentation:** Feature traceability in all touched code?
+- Missing items not marked "n/a" -> Warning
 
 ---
 
@@ -85,6 +113,22 @@ Check against the project's CLAUDE.md conventions. Common checks:
 - XSS: no unescaped user input in HTML?
 - Auth: authentication/authorization where needed?
 - Sandboxing: isolation intact where required?
+
+---
+
+## Follow-Up Queue
+
+During review phases, out-of-scope findings (architecture concerns,
+potential side effects, tech debt) go to the Follow-Up Queue:
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+mkdir -p "$REPO_ROOT/.build/"
+# Read queue, append item, write queue
+```
+
+Categories: `VERIFY` (side effects), `REFAC` (tech debt), `IDEA` (improvements).
+Max 10 items total. Review writes `source_agent: "review"`, `source_phase: "2c"`.
 
 ---
 
@@ -122,6 +166,12 @@ SUMMARY: [1 sentence]
 3. **Findings must be actionable** -- not "code could be better" but "line 42: missing null check for `request.body.name`"
 4. **For refactoring tasks (REFAC):** regression focus -- existing tests must still pass
 5. **Critical = merge blocker, Warning = documented but no blocker**
+6. **ACs must NOT be changed** -- Review reports missing/wrong ACs as Critical Finding,
+   but the plan stays unchanged. AC changes are the responsibility of /task (replanning)
+   or /validate (plan revision). If Review finds an AC is wrong or incomplete:
+   Finding with recommendation, but NO plan edit.
+7. **"Missing tests" is NOT a Critical Finding** -- tests are written by /test in Phase 3,
+   not by the implementer. Review checks code quality, not test existence.
 
 ## Learnings
 
@@ -131,3 +181,10 @@ SUMMARY: [1 sentence]
   successful commit. Deleting before -> on commit failure files are gone but DB unchanged.
 - After field removals or renames, often unused imports remain. After removing/renaming
   a field, check all files for now-unused type imports.
+- Review warnings on an otherwise clean pass (0 Critical, 0 Must-Fix) should be
+  documented as follow-up tickets, not forced as in-scope fixes.
+- Dead code in test files is Warning, not Critical: occurs when plan helpers get
+  refactored/inlined during implementation. Quick fix, no architecture problem.
+- Rename/replace refactorings leave stale artifacts: not just unused imports, but
+  also outdated comments, dead i18n keys, stale JSDoc references. After rename,
+  grep explicitly for old name.

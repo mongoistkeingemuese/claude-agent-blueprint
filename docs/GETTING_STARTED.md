@@ -15,7 +15,7 @@
 cp -r /path/to/claude-agent-blueprint/.claude .
 ```
 
-This gives you the `.claude/commands/` directory with all 10 agent commands.
+This gives you the `.claude/commands/` directory with all agent commands.
 
 ### 2. Add the agent sections to your CLAUDE.md
 
@@ -30,6 +30,7 @@ The key sections are:
 - Agent Commands table
 - Skill Routing table
 - Task Pipeline diagram
+- Quality Gates table
 
 ### 3. Create the state directory structure
 
@@ -60,7 +61,16 @@ cat > docs/orchestrator_state.json << 'EOF'
 EOF
 ```
 
-### 5. Create task plan templates
+### 5. Add .build/ to .gitignore
+
+The follow-up queue and other runtime artifacts live in `.build/`. This directory
+should be gitignored:
+
+```bash
+echo '.build/' >> .gitignore
+```
+
+### 6. Create task plan templates
 
 Create `docs/templates/feature.md`:
 
@@ -72,6 +82,7 @@ Create `docs/templates/feature.md`:
 | **Status** | Draft |
 | **Category** | Feature |
 | **Skill** | null |
+| **Plan-Version** | 1 |
 | **Dependencies** | none |
 
 ## Summary
@@ -93,6 +104,27 @@ Create `docs/templates/feature.md`:
 - Exports: ...
 - Store changes: ...
 
+## Test Specification (for Black-Box Agent)
+
+### Public Interface
+- `POST /api/v1/example` -- Request: `{name: string}`, Response: `{id: number, name: string}`
+
+### Expected Behavior
+| # | Input/Action | Expected Result |
+|---|-------------|-----------------|
+| 1 | ... | ... |
+
+### Edge Cases
+| # | Scenario | Expected Result |
+|---|----------|-----------------|
+| 1 | ... | ... |
+
+### Preconditions
+- ...
+
+### Not in Scope
+- ...
+
 ## Implementation Steps
 1. ...
 2. ...
@@ -107,7 +139,7 @@ Create `docs/templates/feature.md`:
 
 Create similar templates for `bugfix.md` and `refactor.md`.
 
-### 6. Adapt test commands
+### 7. Adapt test commands
 
 Edit `.claude/commands/execute-task.md` Phase 4 and `.claude/commands/orchestrator.md`
 Phase 2.5 to use your project's test and lint commands:
@@ -131,9 +163,10 @@ Try planning a task:
 This will:
 1. Categorize the task (likely FEAT or BUG)
 2. Reserve an ID (e.g., FEAT-001)
-3. Create a plan with acceptance criteria and edge cases
-4. Validate the plan
-5. Ask for your approval
+3. Create a plan with acceptance criteria, edge cases, and test specification
+4. Set `Plan-Version: 1`
+5. Validate the plan
+6. Ask for your approval
 
 Once approved, execute it:
 
@@ -147,6 +180,24 @@ Or run the full pipeline:
 /orchestrator
 ```
 
+## What Happens During Execution
+
+When `/execute-task` runs, it goes through these phases:
+
+1. **Pre-Flight (Phase 0):** Validates task ID, checks dependencies, detects skill
+2. **Branch + Worktree (Phase 1):** Creates isolated working environment
+3. **Plan Validation (Phase 1b):** 8-check suite validates plan against codebase
+4. **Auto-Validate (Phase 1*):** Heuristic triggers deep `/validate` for complex tasks
+5. **Implementation (Phase 2):** Code changes (or skill delegation)
+6. **AC-Checklist Gate (Phase 2.5):** Verifies every AC has corresponding code
+7. **Review (Phase 2c):** White-box code review with plan-version check
+8. **Tests (Phase 3):** Black-box acceptance tests from plan only
+9. **Test-Coverage Check (Phase 4b):** Maps each AC to at least one test
+10. **Follow-Up Gate (Phase 4c):** Checks for VERIFY/high items
+11. **Merge (Phase 5):** Auto-merge to base branch
+12. **Documentation + Follow-Up (Phase 6):** Updates docs, presents follow-up items
+13. **Learning (Phase 7):** Writes insights into agent MDs
+
 ## Adapting to Your Project
 
 The agent system is designed to be project-agnostic. The main customization points are:
@@ -157,5 +208,6 @@ The agent system is designed to be project-agnostic. The main customization poin
 4. **Specialist agents** -- add `.claude/commands/{skill}.md` files
 5. **CLAUDE.md conventions** -- `/review` checks against your conventions
 6. **Task templates** -- in `docs/templates/`
+7. **Follow-Up Queue categories** -- add project-specific categories if needed
 
 See [CUSTOMIZATION.md](CUSTOMIZATION.md) for detailed guidance.

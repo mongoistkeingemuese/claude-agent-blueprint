@@ -50,13 +50,14 @@ Each skill corresponds to a `.claude/commands/{skill}.md` file.
    - Directory: `docs/backlog/features/`, `bugfix/`, `refactor/`, or `tests/`
    - Status: "Draft"
    - Set skill field
+   - Set `Plan-Version: 1` in header
 
 ### Mandatory Sections (ALL must be present)
 
 #### Acceptance Criteria
 ```markdown
 ## Acceptance Criteria
-- [ ] Criterion 1: {PRECISE, testable, measurable}
+- [ ] AC-1: {PRECISE, testable, measurable}
 ```
 
 **NOT:** "Feature works"
@@ -76,6 +77,32 @@ Each skill corresponds to a `.claude/commands/{skill}.md` file.
 - Endpoints: POST /api/v1/foo, GET /api/v1/foo/:id
 - Exports: FooComponent (Props: { bar: string })
 - Store changes: fooStore.addFoo()
+```
+
+#### Test Specification (for Black-Box Agent)
+```markdown
+## Test Specification (for Black-Box Agent)
+
+### Public Interface
+- `POST /api/v1/example` -- Request: `{name: string}`, Response: `{id: number, name: string}`
+
+### Expected Behavior
+| # | Input/Action | Expected Result |
+|---|-------------|-----------------|
+| 1 | POST with valid name | 201, entity in DB |
+| 2 | POST with empty name | 422, validation error |
+
+### Edge Cases
+| # | Scenario | Expected Result |
+|---|----------|-----------------|
+| 1 | name with 1000 chars | 422 or truncation |
+
+### Preconditions
+- Auth: Editor-role token
+- DB: Empty example table
+
+### Not in Scope
+- Frontend rendering of the result (other task)
 ```
 
 #### Cross-Cutting Checklist
@@ -117,6 +144,9 @@ Start a sub-agent (general-purpose) that validates the plan:
 
 6. **Cross-Cutting Checklist:**
    All sections present? Non-relevant items justified with "n/a"?
+
+7. **Test Specification:**
+   Complete enough for the black-box agent? All 5 subsections present?
 
 **REJECT if:**
 - Acceptance criteria not testable
@@ -177,3 +207,9 @@ Ask: **"Should this plan be implemented as-is?"**
   implementation ambiguity and lead to zero-retry execution.
 - Edge cases that block the test runner (e.g., infinite loop in main thread, >100MB
   memory allocation) should be marked as "not unit-testable" with justification.
+- Test task plans with concrete helper signatures, response schemas, and fixture hints
+  lead to first-attempt pass with only trivial review findings.
+- External library API reference in the plan (code snippets with exact method names,
+  parameters, return types) reduces implementation bugs drastically for new integrations.
+- Self-referential tasks (agent infrastructure changes itself): document consistency
+  constraints between agent MDs in the plan. Plan 3+ validation rounds.

@@ -21,8 +21,10 @@ your-project/
 │   │   └── refactor/        # REFAC-XXX plans
 │   ├── templates/           # Plan templates
 │   └── orchestrator_state.json  # Agent state
+├── .build/                  # Runtime artifacts (gitignored)
+│   └── followup_queue.json  # Follow-up queue (agents write here)
 ├── .claude/
-│   └── commands/            # Agent system (10 agents)
+│   └── commands/            # Agent system (11 core agents)
 └── ...
 ```
 
@@ -66,18 +68,19 @@ The project uses a hybrid agent architecture: orchestrator + execute-task + stat
 combined with specialists, a black-box test agent, and a learning agent.
 See `.claude/commands/README.md` for full documentation.
 
-### Agent Commands (10 core)
+### Agent Commands (11 core)
 
 | Command | Purpose |
 |---------|---------|
+| `/bootstrap` | Project onboarding: scan project, generate skills + docs |
 | `/orchestrator` | Autonomous task pipeline (queue manager) |
 | `/execute-task` | Task worker: branch, implement, review, test, learn, merge |
-| `/task` | Task planning with validation (acceptance criteria, edge cases) |
-| `/validate` | Deep plan validation against codebase |
+| `/task` | Task planning with validation (acceptance criteria, edge cases, test spec) |
+| `/validate` | Deep plan validation against codebase (manual or auto-triggered) |
 | `/state` | Show project status (read-only) |
 | `/resolve` | Merge conflict resolution |
-| `/review` | White-box code review (quality, conventions, security) |
-| `/test` | Black-box acceptance tests (independent from implementer) |
+| `/review` | White-box code review (plan-version check, AC change prohibition) |
+| `/test` | Black-box acceptance tests (plan-version check, independent from implementer) |
 | `/testfix` | Intelligent test failure analysis (per-test: fix code or fix test) |
 | `/learn` | Post-task learning, writes learnings into agent MDs |
 
@@ -91,7 +94,31 @@ See `.claude/commands/README.md` for full documentation.
 
 ```
 /task (Plan) -> /execute-task (Implement) -> /review (White-Box) -> /test (Black-Box) -> /testfix (Failures) -> /learn (Feedback)
+     |                |                           |                       |                       |                      |
+     v                v                           v                       v                       v                      v
+ Acceptance       Branch + Worktree           Code quality           Independent tests       Per-test analysis:      Learnings into
+ criteria         Skill routing               Conventions            Test behavior            Fix code OR test       agent MDs
+ Edge cases       Auto-Validate (1*)          AC change prohibition  Plan-Version check      Learnings categories
+ Test spec        AC-Gate (2.5)               Plan-Version check     Follow-Up Queue         Follow-Up Queue
+                  Coverage-Check (4b)         Follow-Up Queue
+                  Follow-Up Queue (6)
 ```
+
+### Quality Gates
+
+| Gate | Phase | What it checks |
+|------|-------|---------------|
+| Plan Validation | 1b | 8-check suite against codebase |
+| Auto-Validate | 1* | Deep validation for complex tasks (heuristic trigger) |
+| AC-Checklist Gate | 2.5 | Every AC has corresponding code |
+| White-Box Review | 2c | Code quality, conventions, plan-version |
+| Black-Box Tests | 3 | Independent tests from plan only |
+| Test-Coverage Check | 4b | Each AC mapped to at least one test |
+| Follow-Up Queue Gate | 4c | VERIFY/high items block merge |
+
+### Runtime Artifacts
+
+- `.build/followup_queue.json` -- agents collect out-of-scope findings here (gitignored)
 
 ## Commit Format
 

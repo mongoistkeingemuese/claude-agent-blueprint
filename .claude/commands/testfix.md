@@ -136,6 +136,46 @@ For each adjusted test:
 
 ---
 
+## Follow-Up Queue
+
+During testfix analysis, recurring patterns indicating structural problems
+go to the Follow-Up Queue:
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+mkdir -p "$REPO_ROOT/.build/"
+# Read queue, append item, write queue
+```
+
+Categories: `REFAC` (structural problems), `VERIFY` (side effects).
+Max 10 items total. Testfix writes `source_agent: "testfix"`, `source_phase: "3b"`.
+
+---
+
+## Testfix Learnings Template
+
+After completing the testfix run, document:
+
+### Per-Test Categorization
+
+| Test | Category | Pattern |
+|------|----------|---------|
+| test_foo | Code was wrong | Missing null check on optional parameter |
+| test_bar | Test was wrong | Test assumed sync return, service is async |
+| test_baz | Plan was unclear | AC-2 leaves open whether error is 400 or 422 |
+
+### Statistics
+
+- Code fixes: {n} ({n}%)
+- Test fixes: {n} ({n}%)
+- Plan fixes: {n} ({n}%)
+
+High ratio of test fixes -> test agent needs improvement
+High ratio of plan fixes -> task planning needs improvement
+High ratio of code fixes -> implementation needs improvement
+
+---
+
 ## Phase 5: Result
 
 ```

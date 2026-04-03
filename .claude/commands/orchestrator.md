@@ -41,10 +41,11 @@
 
 | Rule | Details |
 |------|---------|
-| Main reads | ONLY `docs/orchestrator_state.json` |
+| Main reads | ONLY `docs/orchestrator_state.json` + `.build/followup_queue.json` (after pipeline run) |
 | Sub-agent prompts | Max 10 lines with all required paths |
 | Sub-agent results | Max 5 lines: STATUS + MERGED + TESTS + LINT + SUMMARY |
 | state.json updates | Main: queue/active/history. /execute-task: phase/status/branch/merged |
+| .build/ | Runtime artifacts (Follow-Up Queue). Gitignored. Lives in repo root |
 
 ---
 
@@ -225,6 +226,7 @@ Sub-Agent (general-purpose):
 2. state.json: task status -> "in_progress" (branch already exists)
 3. state.json: insert task in `queue` at position 0 (next task)
 4. Keep branch -- work continues on existing branch
+   (Worktree may have been cleaned up by /execute-task Phase 5a -- Phase 1 restores it)
 5. /execute-task Phase 1 detects existing branch, merges base branch in (NO rebase due to revert issues)
 
 **On skip (structural):**
@@ -264,7 +266,39 @@ Exit 0 = OK, otherwise FAILED.
 Sub-Agent: final consistency check for state.json and documentation.
 
 Main: status -> "completed".
-Report: X done, Y skipped, Z blocked. List unmerged branches.
+
+### 3a: Task Report
+
+```
+=== ORCHESTRATOR REPORT ===
+DONE: {n} tasks
+SKIPPED: {n} tasks (list IDs + reason)
+BLOCKED: {n} tasks (list IDs + blocker)
+UNMERGED BRANCHES: {list or "none"}
+```
+
+### 3b: Follow-Up Summary
+
+Read `.build/followup_queue.json`. If items exist, present grouped by category:
+
+```
+=== FOLLOW-UP SUMMARY ===
+
+VERIFY ({n} items):
+  - [high] {description} (source: {task_id}, agent: {source_agent})
+  - [medium] {description} ...
+
+REFAC ({n} items):
+  - {description} (source: {task_id})
+
+IDEA ({n} items):
+  - {description} (source: {task_id})
+
+ACTION REQUIRED: {n} VERIFY items, {n} REFAC items
+```
+
+This is the final handoff to the user — all accumulated findings from the entire
+pipeline run in one place for triage.
 
 ---
 
@@ -288,7 +322,7 @@ Report: X done, Y skipped, Z blocked. List unmerged branches.
 - Sub-agent prompts: max 10 lines
 - Sub-agent results: max 5 lines
 - Main NEVER reads code files
-- Main reads ONLY state.json
+- Main reads ONLY state.json + .build/followup_queue.json
 - Always sequential: 1 task at a time
 
 ---
@@ -319,3 +353,10 @@ Report: X done, Y skipped, Z blocked. List unmerged branches.
 - Structural errors should be skipped immediately: design errors need manual replanning.
   3 attempts waste context budget. Loop detection (same error as previous attempt)
   -> automatically structural.
+- Fail-fast order for validation: fastest checks first (type check, lint),
+  then unit tests, then integration tests. Saves time on failed validation.
+- Inline instead of sub-agent for simple phases: Phase 4 (Validation) and Phase 6
+  (Docs) don't need sub-agents. Saves context overhead + agent spawning.
+- Transient validate failures vs code failures: If attempt N fails at validate
+  but attempt N+1 with identical code passes immediately, it was infrastructure
+  (symlink, timeout). No pitfalls analysis needed, direct re-enqueue.

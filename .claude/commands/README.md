@@ -10,23 +10,28 @@
 /orchestrator (Queue Manager)
   |
   +-- /task (Planning + Validation)
-  |     +-- Acceptance criteria, edge cases, interface
+  |     +-- Acceptance criteria, edge cases, interface, test spec
   |
   +-- /execute-task (Task Worker)
         |
-        +-- Phase 0: Pre-Flight (ID, deps, skill)
+        +-- Phase 0: Pre-Flight (ID, deps, skill, infra check)
         +-- Phase 1: Branch + Worktree
+        +-- Phase 1b: Plan Validation (8-check suite or lightweight pitfalls check)
+        +-- Phase 1*: Auto-Validate Trigger (heuristic-based)
         +-- Phase 2: Implementation (or skill delegation)
         |     +-- Your specialist agents
         |     +-- or normal feature cycle
+        +-- Phase 2.5: AC-Checklist Gate (NEW -- verifies all ACs implemented)
         +-- Phase 2b: Rebase
-        +-- Phase 2c: /review (White-Box Code Review)
+        +-- Phase 2c: /review (White-Box Code Review, plan-version check)
         +-- Phase 2d: Review Fix Loop (max 2)
-        +-- Phase 3: /test (Black-Box Acceptance Tests)
-        +-- Phase 3b: /testfix (Test Failure Analysis, max 3)
+        +-- Phase 3: /test (Black-Box Acceptance Tests, plan-version check)
+        +-- Phase 3b: /testfix (Test Failure Analysis, max 3, with learnings template)
         +-- Phase 4: Pre-Merge Validation (full test suite)
+        +-- Phase 4b: Test-Coverage Check (AC-to-test mapping)
+        +-- Phase 4c: Follow-Up Queue VERIFY/high Gate
         +-- Phase 5: Auto-Merge to base branch
-        +-- Phase 6: Documentation Update
+        +-- Phase 6: Documentation Update + Follow-Up Presentation
         +-- Phase 7: /learn (Post-Task Learning)
 ```
 
@@ -39,17 +44,17 @@
 | Command | Purpose | Calls |
 |---------|---------|-------|
 | `/orchestrator` | Autonomous task pipeline, queue management | `/execute-task` |
-| `/execute-task` | Task worker: branch, impl, test, learn, merge | `/test`, `/learn`, specialists |
+| `/execute-task` | Task worker: branch, impl, review, test, learn, merge | `/test`, `/learn`, specialists |
 | `/task` | Task planning with validation | Validation sub-agent |
 
 ### Quality Assurance (5)
 
 | Command | Purpose | Key Property |
 |---------|---------|-------------|
-| `/validate` | Deep plan validation against codebase | Manual after `/task`, checks plan against code reality |
-| `/review` | White-box code review | Knows code + plan, checks quality, no code changes |
-| `/test` | Black-box acceptance tests | Knows ONLY task plan, not the code |
-| `/testfix` | Intelligent test failure analysis | Decides per test: fix code or fix test, no coverage loss |
+| `/validate` | Deep plan validation against codebase | Manual or auto-triggered, checks plan against code reality |
+| `/review` | White-box code review | Knows code + plan, plan-version check, AC change prohibition, no code changes |
+| `/test` | Black-box acceptance tests | Knows ONLY task plan, not the code, plan-version check |
+| `/testfix` | Intelligent test failure analysis | Decides per test: fix code or fix test, no coverage loss, learnings template |
 | `/learn` | Post-task learning | Writes learnings directly into agent MDs |
 
 ### Read-Only Tools (2)
@@ -82,12 +87,14 @@ See `templates/specialist.md` for a template.
 ## Test Policy
 
 - Code review by /review before tests (white-box, merge blocker on critical findings)
-- Each requirement has min. 1 test (merge blocker)
+- AC-Checklist Gate after implementation, before review (merge blocker on missing ACs)
+- Each requirement has min. 1 test (merge blocker, verified in Phase 4b)
 - Min. 3 edge cases per task (merge blocker)
 - 0 failed tests (merge blocker)
 - Linting clean (merge blocker)
 - Tests written by /test, NOT by the implementer (black-box)
 - On failures: `/testfix` analyzes per test whether code or test needs adjustment (no coverage loss)
+- VERIFY/high items in Follow-Up Queue block pre-merge (Phase 4c)
 
 ---
 
@@ -97,6 +104,7 @@ See `templates/specialist.md` for a template.
 - **Base branch:** configurable (default: `main`)
 - **Task plans:** `docs/backlog/{features,bugfix,refactor}/`
 - **Templates:** `docs/templates/{feature,bugfix,refactor}.md`
+- **Follow-Up Queue:** `.build/followup_queue.json` (gitignored runtime artifact)
 
 ---
 
@@ -129,7 +137,11 @@ Every agent has:
      v                v                           v                       v                       v                      v
  Acceptance       Branch + Worktree           Code quality           Independent tests       Per-test analysis:      Learnings into
  criteria         Skill routing               Conventions            Test behavior            Fix code OR test       agent MDs
- Edge cases       Pre-merge validation        Security basics        Not code structure       No coverage loss
+ Edge cases       Auto-Validate (1*)          AC change prohibition  Plan-Version check      Learnings categories
+ Test spec        AC-Gate (2.5)               Plan-Version check     Follow-Up Queue         Follow-Up Queue
+                  Coverage-Check (4b)         Follow-Up Queue
+                  Follow-Up Queue (6)
 
-Optional after /task:  /validate (manual) -- deep plan validation against codebase
+/validate: Deep Plan Validation (manual or auto-triggered in Phase 1*)
+Follow-Up Queue: .build/followup_queue.json -- VERIFY/high blocks Pre-Merge (Phase 4c)
 ```

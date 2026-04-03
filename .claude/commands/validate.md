@@ -2,11 +2,16 @@
 
 **Arguments:** $ARGUMENTS (Task-ID e.g. `REFAC-021` or plan path e.g. `docs/backlog/refactor/REFAC-021_name.md`)
 
-You are the validation agent. You are called MANUALLY after `/task`, NOT automatically
-in the pipeline. You validate an existing task plan IN DEPTH against the current
-codebase. You find gaps, legacy code, missing edge cases, and weak test requirements
-that `/task` may have missed. You change NO code and NO plan -- you deliver a
-validation report with concrete improvement suggestions.
+You are the validation agent. You are called MANUALLY after `/task` or AUTOMATICALLY
+in the pipeline (Phase 1* Auto-Validate). You validate an existing task plan IN DEPTH
+against the current codebase. You find gaps, legacy code, missing edge cases, and weak
+test requirements that `/task` may have missed.
+
+**On manual call:** You change NO code and NO plan -- you deliver a validation report.
+User decides what to revise.
+**On auto-trigger (pipeline):** Report is processed internally. On RISK low/medium
+the pipeline integrates findings automatically. On RISK high the pipeline stops for
+user confirmation.
 
 ---
 
@@ -16,7 +21,7 @@ validation report with concrete improvement suggestions.
 /task (formal validation)
   |
   v
-/validate (deep content validation -- manually triggered)
+/validate (deep content validation -- manually triggered or auto-triggered)
   |
   +-- Reads task plan (ACs, edge cases, interface, checklist)
   +-- Analyzes affected files IN DETAIL (not just paths)
@@ -165,7 +170,15 @@ Systematically check -- for each affected code path:
 **System edge cases:** DB connection loss, filesystem full, external service unreachable
 **State edge cases:** operation on already-deleted object, stale references, multiple browser tabs
 
-### 4c: Edge Case Assessment
+### 4c: Learned Patterns
+
+Apply known patterns from agent learnings:
+- Pickling: with subprocess workers -- are all arguments serializable?
+- Self-referencing FK: on bulk DELETE -- UPDATE SET NULL before DELETE?
+- Disk before DB commit: delete files only AFTER commit?
+- Fire-and-forget without rollback: optimistic updates without error handling?
+
+### 4d: Edge Case Assessment
 Each found edge case gets:
 - **Severity:** Critical / High / Medium / Low
 - **Probability:** High / Medium / Low
@@ -191,6 +204,57 @@ Check each AC individually:
 ### 5c: Test Completeness
 - Does each AC have at least one test idea?
 - Are all edge cases (plan + Phase 4) coverable by tests?
+
+### 5d: Test Strategy Recommendation
+```
+| Requirement | Test Type | Framework | Marker/Fixture | Complexity |
+|-------------|-----------|-----------|----------------|------------|
+| AC-1: ...   | API test  | pytest    | e2e, client    | Low        |
+| EC-1: ...   | Unit      | vitest    | vi.mock        | Medium     |
+```
+
+---
+
+## Phase 6: Cross-Cutting Checklist Validation
+
+If the plan contains a cross-cutting checklist, validate each item against code:
+
+### Production Readiness
+- Are the named error handling strategies realistic in the affected code area?
+- Are there existing error handling patterns the plan should adopt?
+
+### Legacy / Tech Debt
+- Do the plan's identified legacy points match code reality?
+- Has the plan found all TODOs/FIXMEs in the area? (compare with Agent 2 result)
+
+### Test Requirements
+- Are the test files/names listed in the plan realistic?
+
+### Persistence
+- New DB fields -> migration in plan?
+- New files on disk -> covered by backup?
+- New state keys -> migration for existing installations?
+
+### Documentation
+- Does CLAUDE.md need an update? (new stores, endpoints, patterns)
+
+**For n/a items:** Is the justification plausible?
+
+---
+
+## Follow-Up Queue
+
+During validation phases, legacy code reuse opportunities and structural
+findings go to the Follow-Up Queue:
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+mkdir -p "$REPO_ROOT/.build/"
+# Read queue, append item, write queue
+```
+
+Categories: `REFAC` (legacy code reuse, cleanup), `VERIFY` (side effects).
+Max 10 items total. Validate writes `source_agent: "validate"`, `source_phase: "1*"`.
 
 ---
 
@@ -234,6 +298,12 @@ MISSING: {n}
 ACS_TESTABLE: {n}/{total}
 EXISTING_TESTS: {n} relevant, {n} potentially breaking
 
+---------------------------------------------------
+  5. CROSS-CUTTING CHECKLIST
+---------------------------------------------------
+  | Section | Plan Status | Code Reality | Assessment |
+  |---------|-------------|--------------|------------|
+
 ===================================================
   RECOMMENDATIONS
 ===================================================
@@ -264,7 +334,7 @@ RECOMMENDED (should be incorporated):
 ## Hard Rules
 
 1. **NO code changes** -- only analysis + report
-2. **NO plan changes** -- only recommendations. User decides.
+2. **NO plan changes** -- only recommendations (on manual call: user decides; on auto-trigger: pipeline integrates)
 3. **Every claim backed by code reference** -- file:line or grep result
 4. **Missing edge cases MUST have severity + probability**
 5. **Non-testable ACs always mean NEEDS_REVISION**
@@ -280,3 +350,9 @@ RECOMMENDED (should be incorporated):
 - Manually constructed response objects need checking when schemas get new fields:
   if `get_X_response()` builds a response field by field (not via ORM), the new field
   gets forgotten. Grep all places that construct the response type.
+- Self-referential changes (agent infrastructure that validates/reviews itself) benefit
+  from iterative validation (3+ rounds). Each round uncovers contradictions that only
+  arise from the previous revision.
+- `else` fallthrough in type-dispatch chains: when adding a new type, the fallthrough
+  `else` becomes silent misbehavior (new type hits old branch). Mark in plan:
+  "convert `else` to `else if`".

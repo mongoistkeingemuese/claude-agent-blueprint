@@ -75,10 +75,11 @@ In `docs/orchestrator_state.json`:
 
 ### Adjusting Test Commands
 
-The test commands appear in two places:
+The test commands appear in multiple places:
 
 1. **`/execute-task` Phase 4** (pre-merge validation in worktree)
 2. **`/orchestrator` Phase 2.5** (post-merge validation on base branch)
+3. **`/execute-task` Phase 4b** (test-coverage check -- maps ACs to tests)
 
 Replace the placeholder comments with your actual commands.
 
@@ -98,8 +99,10 @@ To change it, edit:
 ### Changing the Task Plan Structure
 
 Edit the templates in `docs/templates/`. The mandatory sections
-(acceptance criteria, edge cases, public interface) are referenced by
-`/task`, `/validate`, `/review`, and `/test`, so keep those.
+(acceptance criteria, edge cases, public interface, test specification,
+cross-cutting checklist) are referenced by `/task`, `/validate`, `/review`,
+and `/test`, so keep those. The `Plan-Version` header is used by `/review`
+and `/test` for version checks -- do not remove it.
 
 ---
 
@@ -120,6 +123,30 @@ For skill-specific review checks, add a section to `/review`:
 | `deploy` | Health checks defined, env vars documented, volumes correct |
 | `your-skill` | Your specific checks here |
 ```
+
+---
+
+## Customizing the Follow-Up Queue
+
+The Follow-Up Queue (`.build/followup_queue.json`) collects out-of-scope findings
+during pipeline execution. You can customize:
+
+### Categories
+
+Default categories: `VERIFY` (side effects to check), `REFAC` (cleanup opportunities), `IDEA` (future improvements).
+
+Add your own categories by extending the queue format in agents that write to it
+(`/execute-task`, `/review`, `/test`, `/testfix`, `/validate`).
+
+### Blocking Behavior
+
+By default, only `VERIFY/high` items block the pre-merge gate (Phase 4c).
+To change this, edit Phase 4c in `/execute-task`.
+
+### Queue Size Limit
+
+Default: max 10 items. If your project tends to generate many findings,
+increase this limit in the Follow-Up Queue section of `/execute-task`.
 
 ---
 

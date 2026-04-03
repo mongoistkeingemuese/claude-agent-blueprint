@@ -21,6 +21,19 @@ You do NOT receive:
 
 ---
 
+## Plan-Version Check
+
+Before starting test phases:
+1. `PLAN_VERSION_RECEIVED` = Plan-Version from the caller prompt (default: 1)
+2. `PLAN_VERSION_CURRENT` = Plan-Version from task plan header (`grep "Plan-Version" {TASK_FILE} | awk '{print $NF}'`)
+3. If `PLAN_VERSION_RECEIVED != PLAN_VERSION_CURRENT`:
+   ```
+   WARNING: PLAN-VERSION MISMATCH: Received V{N}, current plan is V{M}.
+   Tests are written against current plan version V{M}.
+   ```
+
+---
+
 ## Phase 1: Extract Requirements
 
 1. Read task plan (path from $ARGUMENTS or state.json)
@@ -75,6 +88,22 @@ ALL tests must pass -- no "acceptable failure".
 - Number of tests >= acceptance criteria + edge cases
 - 0 failures
 - Each acceptance criterion has min. 1 corresponding test
+
+---
+
+## Follow-Up Queue
+
+During test phases, findings about untestable areas or missing abstractions
+go to the Follow-Up Queue:
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+mkdir -p "$REPO_ROOT/.build/"
+# Read queue, append item, write queue
+```
+
+Categories: `VERIFY` (side effects), `IDEA` (testability improvements).
+Max 10 items total. Test writes `source_agent: "test"`, `source_phase: "3"`.
 
 ---
 

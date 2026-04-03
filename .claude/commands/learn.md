@@ -23,6 +23,9 @@ the agent runs next time. The agents evolve themselves.
 - Review fix count (how many review iterations?)
 - Test result (what did /test find?)
 - Test fix count (how many test iterations?)
+- Retry info (was this a retry? which attempt?)
+- Pitfalls (from task file, if present)
+- Attempt history (from state.json errors[], if present)
 
 ---
 
@@ -33,6 +36,7 @@ Questions:
 - Were there test failures? Why?
 - Was the task plan precise enough for black-box testing?
 - Were edge cases forgotten in the plan that /test should have tested?
+- If retry: what caused the original failure? Did the pitfalls help?
 
 ---
 
@@ -61,6 +65,8 @@ Which agent MD(s) does the learning affect?
 | Test | `.claude/commands/test.md` | Black-box testing, test patterns |
 | Testfix | `.claude/commands/testfix.md` | Test failure analysis |
 | Learn | `.claude/commands/learn.md` | Self-improvement |
+| State | `.claude/commands/state.md` | Status display |
+| Resolve | `.claude/commands/resolve.md` | Merge conflicts |
 | *(your specialists)* | `.claude/commands/{skill}.md` | Domain-specific |
 
 ---
