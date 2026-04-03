@@ -15,9 +15,9 @@ This system was extracted from a production project (130k+ lines, 200+ features,
 
 ## How to Use It
 
-### 0. `/bootstrap` — Set up a new project (start here)
+### 0. `/bootstrap` — Onboard an existing project (start here)
 
-Scans your project, detects frameworks/domains, and auto-generates skills + documentation.
+Scans your **existing** codebase, detects frameworks/domains, and auto-generates skills + documentation. Bootstrap needs code to analyze — for greenfield projects, set up your scaffolding first, then run bootstrap.
 
 ```
 /bootstrap
@@ -349,6 +349,9 @@ After each task, the learning agent writes concrete insights into the relevant a
 
 ### Worktree Isolation
 Each task runs in a git worktree. The base branch is never touched during implementation. Failed tasks can be reverted cleanly. Crash recovery works because the worktree and branch persist.
+
+### Roadmaps for larger implementations
+For bigger features that span multiple tasks (e.g. "add a plugin system", "migrate auth to OAuth2"), create a roadmap first. A roadmap breaks the vision into phases with clear milestones and task dependencies. Store them in `docs/plans/` or `docs/backlog/ROADMAP-*.md`. This gives the orchestrator a dependency graph to work with and prevents you from drowning in 30 unordered tasks that step on each other.
 
 ### Structured Error Recovery
 Failures are classified as `fixable` (plan updated with pitfalls, retried) or `structural` (skipped immediately). Post-merge failures trigger automatic revert + re-analysis. Retries use lightweight validation (pitfalls-only) and reuse existing tests. Max 3 attempts before skip.
