@@ -251,6 +251,10 @@ claude-agent-blueprint/
 │   ├── specialist-deploy.md # Example: deployment specialist
 │   └── state.json           # Example orchestrator state
 ├── templates/
+│   ├── feature.md           # Task plan template: new features
+│   ├── bugfix.md            # Task plan template: bug fixes
+│   ├── refactor.md          # Task plan template: refactoring
+│   ├── checklist.md         # Cross-cutting checklist (included in all plans)
 │   ├── specialist.md        # Template for custom specialists
 │   └── CLAUDE.md.template   # CLAUDE.md template with agent sections
 └── LICENSE                  # MIT
@@ -270,6 +274,8 @@ cp -r claude-agent-blueprint/.claude your-project/
 ```
 
 Bootstrap will scan your project, propose skills + docs, and generate everything after your approval.
+
+**Important: review the templates after setup.** The task plan templates (`templates/feature.md`, `bugfix.md`, `refactor.md`, `checklist.md`) are generic starting points. Go through them once and adapt to your project's stack — add your test framework, your persistence layer, your UI conventions, your CI pipeline. The more specific your templates are, the better the plans and the fewer retries you'll need.
 
 ### Option B: Manual
 
