@@ -24,6 +24,36 @@ Phases: `preflight`, `branch`, `plan_check`, `implement`, `ac_gate`, `rebase`, `
 
 ---
 
+## Model Selection (per Sub-Agent)
+
+Speed optimization: use the cheapest/fastest model that can do the job,
+escalate on retries. Pass the `model` parameter to the Task tool when
+dispatching a sub-agent.
+
+| Sub-Agent / Phase | Model | Rationale |
+|---|---|---|
+| 1b Plan Check (first attempt, full 8-check) | `sonnet` | Code/plan reasoning, Haiku too weak |
+| 1b Plan Check (retry, lightweight) | -- | Inline, no sub-agent |
+| 2 Implement (first attempt, `IS_RETRY == false`) | `sonnet` | Default code generation |
+| 2 Implement (retry, `IS_RETRY == true`) | `opus` | Retry = hard; pitfalls-driven rework benefits from deeper reasoning |
+| 2b Skill specialist (`TASK_SKILL != null`) | `sonnet` | Default; specialist may override |
+| 2c Review | `sonnet` | White-box analysis |
+| 3 Test (first attempt) | `sonnet` | Test design from ACs |
+| 3 Testfix (iteration 1) | `sonnet` | Normal debugging |
+| 3 Testfix (iteration 2-3) | `opus` | What Sonnet did not solve needs more power |
+| 7 Learn | `haiku` | Mechanical pattern extraction, fire-and-forget, low stakes |
+
+**Escalation rule:** On every retry that involves reasoning failure (not
+infrastructure), bump one tier (sonnet -> opus). Never downgrade on retry.
+
+**Why Haiku for Learn:** Learn writes insights into `## Learnings` sections
+of agent MDs. The work is mostly categorization + short summarization of
+already-analyzed failure data (review/test results, attempt history). Haiku
+handles this well and saves ~60-80% time vs Sonnet. Since learn is
+fire-and-forget, even an occasional miss has no pipeline impact.
+
+---
+
 ## Phase 0: Pre-Flight (Main)
 
 **Phase update:** `preflight`
@@ -128,7 +158,7 @@ Otherwise continue to Phase 2. No plan-version bump on retry.
 Most critical quality gate in the workflow. Checks whether the task plan
 still matches the current codebase BEFORE implementation starts.
 
-Sub-Agent (general-purpose):
+Sub-Agent (general-purpose, **model: sonnet**):
 
 > Working directory: {WORKTREE_PATH}
 > Read task plan: `{TASK_FILE}`
@@ -242,7 +272,8 @@ Read task file. Check:
 
 ### 2b: Skill Routing
 
-**If TASK_SKILL is set:** delegate to specialist agent:
+**If TASK_SKILL is set:** delegate to specialist agent (**model: sonnet**,
+escalate to `opus` on retry):
 
 > Read and follow `{ABS_PATH}/.claude/commands/{TASK_SKILL}.md`.
 > Task-ID: {ID}
@@ -264,7 +295,7 @@ Read task file. Check:
 
 **On first attempt (IS_RETRY == false):**
 
-Sub-Agent:
+Sub-Agent (**model: sonnet**):
 
 > Implement task {ID} according to the plan.
 > `cd {WORKTREE_PATH}`
@@ -289,7 +320,7 @@ Sub-Agent:
 
 **On retry (IS_RETRY == true):**
 
-Sub-Agent:
+Sub-Agent (**model: opus** -- escalation since first attempt failed):
 
 > **RETRY** of task {ID}. Read PITFALLS section first.
 > Existing work on branch:
@@ -374,7 +405,7 @@ Main waits for both results, then handles outcomes jointly.
 **Sub-Agent A (review) and Sub-Agent B (test) are dispatched together in ONE
 message with TWO parallel Task calls.** No serialization.
 
-#### Sub-Agent A -- Review
+#### Sub-Agent A -- Review (**model: sonnet**)
 > Read and follow `{ABS_PATH}/.claude/commands/review.md`.
 > Task plan: {TASK_FILE}
 > Working directory: {WORKTREE_PATH}
@@ -391,7 +422,7 @@ message with TWO parallel Task calls.** No serialization.
 > CONVENTIONS: {OK|{n} violations}
 > SUMMARY: [1 sentence]
 
-#### Sub-Agent B -- Test
+#### Sub-Agent B -- Test (**model: sonnet**)
 > Read and follow `{ABS_PATH}/.claude/commands/test.md`.
 > Task-ID: {ID}
 > Task plan: {TASK_FILE}
@@ -446,7 +477,7 @@ Track `REVIEW_FIX_COUNT` (0 = no fix needed, 1 = first fix, 2 = second fix).
 
 ### Test Fix Loop (max 3 iterations)
 
-Sub-Agent:
+Sub-Agent (**model: sonnet** for iteration 1, **opus** for iterations 2-3):
 > Read and follow `{ABS_PATH}/.claude/commands/testfix.md`.
 > TASK_ID: {ID}
 > TASK_PLAN: {TASK_FILE}
@@ -597,7 +628,7 @@ The /execute-task result is returned to the caller BEFORE learn finishes.
 Learn runs as a **background sub-agent** (`run_in_background: true` on the Task
 call), so the orchestrator can immediately pick the next task.
 
-Sub-Agent (background):
+Sub-Agent (background, **model: haiku**):
 
 > Read and follow `{ABS_PATH}/.claude/commands/learn.md`.
 > Task-ID: {ID}

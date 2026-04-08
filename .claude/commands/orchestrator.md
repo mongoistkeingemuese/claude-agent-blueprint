@@ -37,6 +37,20 @@
 
 ---
 
+## Model Selection
+
+See `execute-task.md` for the full per-phase model table. Orchestrator-specific
+sub-agents:
+
+| Sub-Agent | Model | Rationale |
+|---|---|---|
+| 2.3b Fix Analysis | `sonnet` | Root cause classification (fixable/structural) |
+| 3 Completion Consistency Check | `haiku` | Mechanical state.json + docs validation |
+
+Phase 1 (Queue Build) is now inline -- no sub-agent, no model choice.
+
+---
+
 ## Context Rules
 
 | Rule | Details |
@@ -189,7 +203,7 @@ Triggered when:
 
 #### Step 2: Start analysis agent
 
-Sub-Agent (general-purpose):
+Sub-Agent (general-purpose, **model: sonnet**):
 
 > Analyze the failure of task {ID} and update the plan.
 > `cd {ABS_PATH}`
@@ -285,7 +299,8 @@ Exit 0 = OK, otherwise FAILED.
 
 ## Phase 3: Completion
 
-Sub-Agent: final consistency check for state.json and documentation.
+Sub-Agent (**model: haiku**): final consistency check for state.json and
+documentation. Mechanical validation, Haiku is sufficient.
 
 Main: status -> "completed".
 
