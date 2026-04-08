@@ -37,7 +37,7 @@ dispatching a sub-agent.
 | 2 Implement (first attempt, `IS_RETRY == false`) | `sonnet` | Default code generation |
 | 2 Implement (retry, `IS_RETRY == true`) | `opus` | Retry = hard; pitfalls-driven rework benefits from deeper reasoning |
 | 2b Skill specialist (`TASK_SKILL != null`) | `sonnet` | Default; specialist may override |
-| 2c Review | `sonnet` | White-box analysis |
+| 2c Review | **`opus`** | Safety-critical gate -- deeper reasoning catches subtle issues (missed edge cases, hidden race conditions, production-readiness gaps). Runs in parallel with Test, so extra latency is partially hidden. |
 | 3 Test (first attempt) | `sonnet` | Test design from ACs |
 | 3 Testfix (iteration 1) | `sonnet` | Normal debugging |
 | 3 Testfix (iteration 2-3) | `opus` | What Sonnet did not solve needs more power |
@@ -405,7 +405,13 @@ Main waits for both results, then handles outcomes jointly.
 **Sub-Agent A (review) and Sub-Agent B (test) are dispatched together in ONE
 message with TWO parallel Task calls.** No serialization.
 
-#### Sub-Agent A -- Review (**model: sonnet**)
+#### Sub-Agent A -- Review (**model: opus**)
+
+Review is the safety-critical gate. Opus catches subtle issues Sonnet misses
+(missed edge cases, hidden race conditions, production-readiness gaps).
+Since Review runs in parallel with Test, the extra Opus latency is partially
+hidden behind the Test sub-agent.
+
 > Read and follow `{ABS_PATH}/.claude/commands/review.md`.
 > Task plan: {TASK_FILE}
 > Working directory: {WORKTREE_PATH}
@@ -469,8 +475,9 @@ when testfix touched production code).
 
 ### Review Fix Loop (max 2 iterations)
 
-1. Fix critical findings (sub-agent with findings list)
-2. Re-run /review
+1. Fix critical findings (sub-agent with findings list, **model: opus** --
+   critical findings from an Opus-review deserve an Opus-fix)
+2. Re-run /review (also `opus`)
 3. After 2 failed iterations: STATUS: blocked
 
 Track `REVIEW_FIX_COUNT` (0 = no fix needed, 1 = first fix, 2 = second fix).
