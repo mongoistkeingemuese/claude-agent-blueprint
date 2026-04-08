@@ -362,6 +362,20 @@ Agents collect out-of-scope findings during pipeline execution (cleanup opportun
 
 This agent system was developed and battle-tested on a production 3D HMI platform (130k+ lines, 200+ features, 350+ tasks, 2 months development) -- a web-based digital twin with Python/FastAPI backend, React/TypeScript frontend, and a plugin system. 2000+ tests, all managed through this pipeline. The source project is currently private and will be published as open source soon.
 
+## When to use the pipeline (and when not to)
+
+Not every change needs 7 quality gates. Rule of thumb:
+
+| Change | Approach | Why |
+|--------|----------|-----|
+| Fix a typo, update a translation, change a config value | Just do it directly | Pipeline overhead is 100x the actual work |
+| Add a field, rename a variable, small CSS fix | Just do it directly | Obvious change, review in the diff is enough |
+| New endpoint, new component, new store | `/task` → full pipeline | Multiple files, needs tests, has edge cases |
+| Cross-cutting feature (auth, plugin system, data pipeline) | Roadmap → `/task` → full pipeline | Dependencies, phases, needs planning |
+| Refactoring with no behavior change | `/task` → pipeline but skip `/test` if existing tests cover it | Existing tests are the safety net |
+
+**The pipeline buys you autonomy, not perfection.** Use it when the cost of a mistake is high or when you want the LLM to work unsupervised. Skip it when you can verify the change faster than the pipeline can process it.
+
 ## Limitations
 
 - **Requires Claude Code** -- the slash commands (`/orchestrator`, `/task`, etc.) are Claude Code features
