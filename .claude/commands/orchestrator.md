@@ -21,7 +21,7 @@
 /orchestrator (Main = Queue Manager)
   |
   |-- Phase 0: Init / Resume
-  |-- Phase 1: Queue Build (Sub-Agent)
+  |-- Phase 1: Queue Build (INLINE, no sub-agent)
   |
   |-- Phase 2: Task Execution (Loop over queue)
   |     |
@@ -94,19 +94,41 @@ State: status -> "running", base_branch -> "main" (or your configured branch).
 
 ---
 
-## Phase 1: Queue Build (Sub-Agent)
+## Phase 1: Queue Build (Inline)
 
-Sub-Agent (Explore):
+**No sub-agent.** Toposort is trivial and state.json is already in the main
+context. Main builds the queue inline with `jq`.
 
-> Read `{ABS_PATH}/docs/orchestrator_state.json`.
-> Topological sort: tasks without open deps first.
-> Filter: {ARGUMENTS if provided}. Include tasks with status "approved" or "in_progress".
-> ("in_progress" = retry or crash recovery with existing branch)
-> Sequential order: respect dependencies, one task at a time.
-> Result (ONLY 1 line):
-> QUEUE: [FEAT-001, BUG-003, ...]
+```bash
+cd {ABS_PATH}
 
-Main: write queue + phase "executing" to state.json.
+# 1. Extract all candidate tasks (status "approved" or "in_progress") across
+#    features/bugfixes/refactors/tests categories.
+jq -r '
+  [.features, .bugfixes, .refactors, .tests]
+  | map(to_entries[] | select(.value.status == "approved" or .value.status == "in_progress"))
+  | flatten
+  | map({id: .key, deps: (.value.deps // [])})
+' docs/orchestrator_state.json > /tmp/orch_candidates.json
+
+# 2. Apply $ARGUMENTS filter if provided
+#    (e.g. "only FEAT-003" -> keep only FEAT-003; "from REFAC-002" -> from that ID onward)
+
+# 3. Topological sort: tasks with no unresolved deps first.
+#    An unresolved dep = referenced ID whose status != "done".
+#    Iterate: pick ready tasks (all deps done or not in candidates),
+#    append to queue, remove from pool, repeat until empty or stalled.
+```
+
+Implementation: Main executes the above inline, produces a flat ordered list
+of task IDs, writes `queue` + `orchestrator.phase = "executing"` to state.json.
+If the loop stalls (remaining tasks all have unresolved deps on each other):
+flag circular dependency, pause, report.
+
+**Expected output (for log only):**
+```
+QUEUE: [FEAT-001, BUG-003, FEAT-002, ...]
+```
 
 ---
 

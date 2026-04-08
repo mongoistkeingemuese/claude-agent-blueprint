@@ -93,14 +93,14 @@ See `.claude/commands/README.md` for full documentation.
 ### Task Pipeline
 
 ```
-/task (Plan) -> /execute-task (Implement) -> /review (White-Box) -> /test (Black-Box) -> /testfix (Failures) -> /learn (Feedback)
-     |                |                           |                       |                       |                      |
-     v                v                           v                       v                       v                      v
- Acceptance       Branch + Worktree           Code quality           Independent tests       Per-test analysis:      Learnings into
- criteria         Skill routing               Conventions            Test behavior            Fix code OR test       agent MDs
- Edge cases       Auto-Validate (1*)          AC change prohibition  Plan-Version check      Learnings categories
- Test spec        AC-Gate (2.5)               Plan-Version check     Follow-Up Queue         Follow-Up Queue
-                  Coverage-Check (4b)         Follow-Up Queue
+/task (Plan) -> /execute-task (Implement) -> [/review || /test] (parallel) -> /testfix (Failures) -> /learn (background)
+     |                |                               |                              |                       |
+     v                v                               v                              v                       v
+ Acceptance       Branch + Worktree          White-Box + Black-Box            Per-test analysis:       Fire-and-forget
+ criteria         Skill routing              launched in parallel              Fix code OR test         Writes into agent MDs
+ Edge cases       Plan-Check (1b)            Code quality + tests              Re-test after code fix   Non-blocking
+ Test spec        AC-Gate (2.5)              AC change prohibition             Follow-Up Queue          Next task starts
+                  Coverage-Check (4b)        Plan-Version check                                         immediately
                   Follow-Up Queue (6)
 ```
 
@@ -108,11 +108,10 @@ See `.claude/commands/README.md` for full documentation.
 
 | Gate | Phase | What it checks |
 |------|-------|---------------|
-| Plan Validation | 1b | 8-check suite against codebase |
-| Auto-Validate | 1* | Deep validation for complex tasks (heuristic trigger) |
+| Plan Check | 1b | 8-check suite against codebase (absorbs former auto-validate heuristic) |
 | AC-Checklist Gate | 2.5 | Every AC has corresponding code |
-| White-Box Review | 2c | Code quality, conventions, plan-version |
-| Black-Box Tests | 3 | Independent tests from plan only |
+| White-Box Review | 2c/3 | Code quality, conventions, plan-version (parallel with Test) |
+| Black-Box Tests | 2c/3 | Independent tests from plan only (parallel with Review) |
 | Test-Coverage Check | 4b | Each AC mapped to at least one test |
 | Follow-Up Queue Gate | 4c | VERIFY/high items block merge |
 

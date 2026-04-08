@@ -91,19 +91,18 @@ It picks the next open task, executes the full pipeline (plan → implement → 
 | `/state` | Show project status (read-only) |
 | `/resolve` | Merge conflict resolution |
 
-## QA Hardening (7 Quality Gates)
+## QA Hardening (6 Quality Gates)
 
-The pipeline includes 7 quality gates that prevent defects from reaching the base branch:
+The pipeline includes 6 quality gates that prevent defects from reaching the base branch:
 
 | # | Gate | Phase | Blocking? |
 |---|------|-------|-----------|
-| 1 | **Plan Validation** | 1b | 8-check suite validates plan against codebase |
-| 2 | **Auto-Validate** | 1* | Heuristic-triggered deep validation for complex tasks |
-| 3 | **AC-Checklist Gate** | 2.5 | Every acceptance criterion must have corresponding code |
-| 4 | **White-Box Review** | 2c | Code review with AC change prohibition |
-| 5 | **Black-Box Tests** | 3 | Independent tests from plan only (plan-version check) |
-| 6 | **Test-Coverage Check** | 4b | Each AC mapped to at least one test |
-| 7 | **Follow-Up Queue Gate** | 4c | VERIFY/high items block merge |
+| 1 | **Plan Check** | 1b | 8-check suite validates plan against codebase (complexity heuristic folded in) |
+| 2 | **AC-Checklist Gate** | 2.5 | Every acceptance criterion must have corresponding code |
+| 3 | **White-Box Review** | 2c/3 | Code review with AC change prohibition (runs parallel with Test) |
+| 4 | **Black-Box Tests** | 2c/3 | Independent tests from plan only (runs parallel with Review) |
+| 5 | **Test-Coverage Check** | 4b | Each AC mapped to at least one test |
+| 6 | **Follow-Up Queue Gate** | 4c | VERIFY/high items block merge |
 
 ### Follow-Up Queue
 
@@ -122,10 +121,10 @@ This system has two distinct layers that work together:
 The pipeline is **protocol** — it defines *how* tasks flow through the system regardless of domain:
 
 ```
-/task → /execute-task → /review → /test → /testfix → /learn
+/task → /execute-task → [/review ∥ /test] → /testfix → /learn (background)
 ```
 
-Every task goes through the same stages. The pipeline ensures quality gates, worktree isolation, structured error recovery, and learning. It knows nothing about your domain — it only knows process.
+Every task goes through the same stages. Review and Test run **in parallel** (they're independent — review reads code, test writes tests from the plan). Learn runs **fire-and-forget** after merge, so the orchestrator can start the next task immediately. The pipeline ensures quality gates, worktree isolation, structured error recovery, and learning. It knows nothing about your domain — it only knows process.
 
 ### Skills (domain experts)
 

@@ -20,7 +20,7 @@ Category path: FEAT -> `.features`, BUG -> `.bugfixes`, REFAC -> `.refactors`, T
 ) 201>docs/.state.lock
 ```
 
-Phases: `preflight`, `branch`, `plan_validate`, `implement`, `ac_gate`, `rebase`, `review`, `test`, `validate`, `merge`, `cleanup`, `docs`, `learn`
+Phases: `preflight`, `branch`, `plan_check`, `implement`, `ac_gate`, `rebase`, `review_test`, `validate`, `merge`, `cleanup`, `docs`, `learn`
 
 ---
 
@@ -105,25 +105,25 @@ All subsequent phases work in: `.claude/worktrees/{ID}/`
 
 ---
 
-## Phase 1b: Plan Validation & Revision (Sub-Agent)
+## Phase 1b: Plan Check & Revision (Sub-Agent)
 
-**Phase update:** `plan_validate`
+**Phase update:** `plan_check`
 
-**On retry (IS_RETRY == true): LIGHTWEIGHT validation.**
-The fix analysis agent just updated the plan. With sequential execution,
-code hasn't changed since the last attempt. Skip the full check suite.
+This phase absorbs the former Phase 1* (Auto-Validate). One single plan check
+covers everything /validate used to re-run separately. No second sub-agent spawn.
 
-Sub-Agent:
-> Check pitfalls section is present and coherent.
-> Verify pitfall solutions are consistent with implementation steps.
-> Result (3 lines):
-> PLAN_STATUS: valid|revised
-> PITFALLS_COHERENT: true|false
-> REVISION_SUMMARY: [1 sentence]
+**On retry (IS_RETRY == true): INLINE lightweight check (no sub-agent).**
+The fix analysis agent just updated the plan. With sequential execution, code
+hasn't changed since the last attempt. Main checks inline:
+```bash
+grep -q "^## Pitfalls" {TASK_FILE} && echo "PITFALLS: present" || echo "PITFALLS: missing"
+```
+If pitfalls section is missing on a retry -> STATUS: blocked (fix analysis failed).
+Otherwise continue to Phase 2. No plan-version bump on retry.
 
 ---
 
-**On first attempt (IS_RETRY == false): FULL validation.**
+**On first attempt (IS_RETRY == false): FULL validation (sub-agent).**
 
 Most critical quality gate in the workflow. Checks whether the task plan
 still matches the current codebase BEFORE implementation starts.
@@ -170,6 +170,12 @@ Sub-Agent (general-purpose):
 > Public interface, expected behavior, edge case behavior,
 > testable preconditions, scope boundaries?
 >
+> ### Complexity Flag (extra scrutiny)
+> If any of these hold, apply stricter thresholds in Step 3 (promote INFO->MINOR):
+> - Task type is REFAC or FEAT with >3 ACs
+> - Plan affects >3 files (in "Affected Files" section)
+> - Plan contains keywords: "refactor", "migration", "breaking", "architecture"
+>
 > ## Step 3: Classify Findings
 > INFO | MINOR | MAJOR | BLOCKER
 >
@@ -196,52 +202,22 @@ Sub-Agent (general-purpose):
 
 | PLAN_STATUS | RISK | Action |
 |-------------|------|--------|
-| valid | low | Continue to Phase 1* (Auto-Validate Check) |
+| valid | low | Continue to Phase 2 |
 | revised | medium | Continue, store REVISION_SUMMARY for Phase 2 |
-| revised | high | Continue automatically, findings documented |
+| revised | high | User confirmation required. Pipeline stops. |
 | blocked | blocker | state.json status -> "blocked". Task back to `/task` |
 
----
-
-## Phase 1*: Auto-Validate Trigger (Main)
-
-**Heuristic -- `/validate` is automatically triggered when:**
-- Task type is `REFAC` or `FEAT` with >3 ACs
-- Plan affects >3 files (in "Affected Files" section)
-- Plan contains keywords: `"refactor"`, `"migration"`, `"breaking"`, `"architecture"`
-
-**Re-trigger guard:**
-Flag `VALIDATED = true` is set after successful validate (in-memory).
-Prevents re-triggering when revised plan still matches heuristic.
-
-**Flow:**
-1. Check if `/validate` was already run manually (plan contains "Plan-Revision" with validate reference) -> Skip
-2. Check if `VALIDATED == true` -> Skip
-3. Evaluate heuristic
-4. If heuristic does NOT match -> Skip, continue to Phase 2
-5. If heuristic matches:
-   Sub-Agent: Run `/validate` against the task plan.
-6. Process validate result:
-
-   | RISK | Action |
-   |------|--------|
-   | low | `VALIDATED = true`, continue to Phase 2 |
-   | medium | Automatic plan revision, `VALIDATED = true`, continue |
-   | high | User confirmation required. Pipeline stops. |
-   | blocker | state.json status -> "blocked" |
-
-7. **Plan Revision (for findings >= MINOR, RISK != high):**
-   a. Parse validate report, extract CRITICAL/RECOMMENDED items
-   b. Update plan file (ACs, edge cases, affected files)
-   c. Append Plan-Revision section
-   d. Increment `plan_version` in header (store as `PLAN_VERSION`)
-   e. Git commit: `docs({ID}): revise plan V{N} -- {M} findings from /validate`
+**Note:** The former Phase 1* (Auto-Validate) heuristic is now folded into the
+Phase 1b sub-agent prompt itself -- the 8-check suite already covers what
+`/validate` re-did. No second sub-agent spawn. Complex tasks (REFAC, FEAT
+with >3 ACs, >3 affected files, keywords `refactor|migration|breaking|architecture`)
+are flagged in Phase 1b for extra scrutiny inside the same run.
 
 ---
 
 ## Plan-Version Propagation
 
-After Phase 1b (and possibly Phase 1* plan revision):
+After Phase 1b (plan revision is part of it):
 
 ```
 PLAN_VERSION=$(grep "Plan-Version" {TASK_FILE} | awk '{print $NF}')
@@ -382,12 +358,23 @@ On conflict: STATUS: blocked, recommend `/resolve {ID}`.
 
 ---
 
-## Phase 2c: Code Review
+## Phase 2c/3: Review + Test (Parallel)
 
-**Phase update:** `review`
+**Phase update:** `review_test`
 
-Sub-Agent:
+Review and Test are independent:
+- Review reads plan + diff, produces findings report, **writes no code**.
+- Test reads plan + interface, writes black-box tests, runs them.
 
+They are launched **in parallel** (single message, two Task tool calls).
+Main waits for both results, then handles outcomes jointly.
+
+### Parallel Launch
+
+**Sub-Agent A (review) and Sub-Agent B (test) are dispatched together in ONE
+message with TWO parallel Task calls.** No serialization.
+
+#### Sub-Agent A -- Review
 > Read and follow `{ABS_PATH}/.claude/commands/review.md`.
 > Task plan: {TASK_FILE}
 > Working directory: {WORKTREE_PATH}
@@ -404,37 +391,7 @@ Sub-Agent:
 > CONVENTIONS: {OK|{n} violations}
 > SUMMARY: [1 sentence]
 
-### Review Fix Loop (max 2 iterations)
-
-If STATUS = "fail":
-1. Fix critical findings (sub-agent with findings list)
-2. Re-run /review
-3. After 2 failed iterations: STATUS: blocked
-
-If STATUS = "warn": continue (warnings documented for /learn)
-If STATUS = "pass": continue
-
-Track `REVIEW_FIX_COUNT` (0 = no fix needed, 1 = first fix, 2 = second fix).
-
----
-
-## Phase 3: Black-Box Testing
-
-**Phase update:** `test`
-
-**On retry (IS_RETRY == true): check if tests already exist.**
-```bash
-cd {WORKTREE_PATH}
-git diff --name-only {BASE_BRANCH}...HEAD | grep -E "test_|\.test\." | head -5
-```
-- **Tests exist:** Run tests only, do NOT rewrite.
-  On failure -> Phase 3b (test fix loop).
-- **No tests:** Normal /test workflow (see below).
-
-**On first attempt or no tests on branch:**
-
-Sub-Agent:
-
+#### Sub-Agent B -- Test
 > Read and follow `{ABS_PATH}/.claude/commands/test.md`.
 > Task-ID: {ID}
 > Task plan: {TASK_FILE}
@@ -452,12 +409,44 @@ Sub-Agent:
 > EDGE_CASES: {tested}/{planned}
 > SUMMARY: [1 sentence]
 
+**Retry exception (IS_RETRY == true):** Check first if tests already exist on
+the branch:
+```bash
+cd {WORKTREE_PATH}
+git diff --name-only {BASE_BRANCH}...HEAD | grep -E "test_|\.test\." | head -5
+```
+If tests exist, Sub-Agent B runs existing tests only (no rewrite).
+Otherwise normal flow.
+
+### Joint Result Handling
+
+Wait for both sub-agents. Then decide:
+
+| Review | Test | Action |
+|--------|------|--------|
+| pass/warn | pass | Continue to Phase 4 |
+| pass/warn | fail | Test fix loop only (tests already cover ACs) |
+| fail | pass | Review fix loop, then **re-run Test only** (code changed, test results stale) |
+| fail | fail | Review fix loop first (critical findings often cause test failures), then re-run Test, then testfix if still failing |
+
+Rationale: Review-fix changes code -> test results from the parallel run may be
+stale. Always re-run /test after a review-fix iteration before accepting.
+Testfix does not invalidate review (tests change, not production code beyond
+targeted fixes) -- except when testfix decides to fix code. In that case, a
+final /review pass is triggered after testfix succeeds (1 extra sub-agent only
+when testfix touched production code).
+
+### Review Fix Loop (max 2 iterations)
+
+1. Fix critical findings (sub-agent with findings list)
+2. Re-run /review
+3. After 2 failed iterations: STATUS: blocked
+
+Track `REVIEW_FIX_COUNT` (0 = no fix needed, 1 = first fix, 2 = second fix).
+
 ### Test Fix Loop (max 3 iterations)
 
-If STATUS = "fail":
-
 Sub-Agent:
-
 > Read and follow `{ABS_PATH}/.claude/commands/testfix.md`.
 > TASK_ID: {ID}
 > TASK_PLAN: {TASK_FILE}
@@ -468,6 +457,9 @@ Sub-Agent:
 > Analyze failures and fix code or tests (no coverage loss).
 
 After 3 failed iterations: STATUS: blocked.
+
+If testfix modified production code (not just test files), trigger one final
+/review pass to catch regressions from the fix.
 
 ---
 
@@ -596,11 +588,16 @@ Queue is archived in state.json under the task entry after Phase 6.
 
 ---
 
-## Phase 7: Learning
+## Phase 7: Learning (Fire-and-Forget)
 
 **Phase update:** `learn`
 
-Sub-Agent:
+Learn is **non-blocking**. It writes insights into agent MDs but gates nothing.
+The /execute-task result is returned to the caller BEFORE learn finishes.
+Learn runs as a **background sub-agent** (`run_in_background: true` on the Task
+call), so the orchestrator can immediately pick the next task.
+
+Sub-Agent (background):
 
 > Read and follow `{ABS_PATH}/.claude/commands/learn.md`.
 > Task-ID: {ID}
@@ -612,6 +609,16 @@ Sub-Agent:
 > Retry info: {IS_RETRY}, Attempt: {current attempt number}
 > Pitfalls: {pitfalls section from task file, if present}
 > Attempt history: {errors[].attempts from state.json, if present}
+
+**Dispatch:** Launch the sub-agent with `run_in_background: true` and do NOT
+await its result. Phase 7 is complete the moment the background call is
+dispatched. Final STATUS/MERGED/TESTS/LINT/SUMMARY result is emitted
+immediately after dispatching (regardless of learn completion).
+
+**Race note:** Learn writes to `.claude/commands/*.md` files. Next-task sub-agent
+reads these at spawn time. Small overlap window is harmless -- worst case the
+next task starts with the pre-learn version of an agent MD. No corruption
+because writes are file-level and atomic.
 
 **On retry success (IS_RETRY == true):** The learning agent receives the complete
 failure history and should extract patterns for the Learnings sections.
