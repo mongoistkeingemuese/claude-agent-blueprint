@@ -54,9 +54,13 @@ def rewrite_command_paths(content):
     """
     content = content.replace(".claude/commands/orchestrator.md", ".github/prompts/orchestrator.prompt.md")
     content = content.replace(".claude/commands/*.md", ".claude/skills/*/SKILL.md")
-    # {skill}, {TASK_SKILL}, ... -- keep brace placeholders intact
-    content = re.sub(r'\.claude/commands/(\{[\w]+\})\.md', r'.claude/skills/\1/SKILL.md', content)
-    content = re.sub(r'\.claude/commands/([\w-]+)\.md', r'.claude/skills/\1/SKILL.md', content)
+    # {skill}, {TASK_SKILL}, {task-skill}, ... -- keep brace placeholders intact
+    content = re.sub(r'\.claude/commands/(\{[\w-]+\})\.md', r'.claude/skills/\1/SKILL.md', content)
+    # Concrete names: normalize with the SAME kebab-casing used to create the skill
+    # dirs, so a reference to e.g. README.md or My_Skill.md resolves to readme/ or
+    # my-skill/ instead of a non-existent same-case folder.
+    content = re.sub(r'\.claude/commands/([\w-]+)\.md',
+                     lambda m: f'.claude/skills/{to_kebab_case(m.group(1))}/SKILL.md', content)
     return content
 
 def extract_description(content, default_name):
