@@ -1,6 +1,6 @@
 ---
 name: quick
-description: Lightweight Change (No Pipeline)
+description: "Handles a small, low-risk change directly with a short mandatory plan, bypassing the full task pipeline. Use for minor edits (typo, copy, tiny fix) that don't warrant a full plan/review/test/merge cycle."
 ---
 
 # /quick -- Lightweight Change (No Pipeline)

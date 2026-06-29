@@ -1,6 +1,7 @@
 ---
 name: readme
-description: Claude Agent System
+description: "Reference overview of the Claude Agent System: architecture, the command/skill pipeline, state management, and quality gates. Use when you need to understand how the agent system fits together; this is reference material, not an executable workflow."
+disable-model-invocation: true
 ---
 
 # Claude Agent System
@@ -81,7 +82,7 @@ Task has skill: null            -> normal feature cycle
 ```
 
 Add your own specialists by:
-1. Creating a `.claude/commands/{skill}.md` file
+1. Creating a `.claude/skills/{skill}/SKILL.md` file
 2. Adding the skill to the routing table in `/execute-task`
 3. Defining trigger keywords in `/task`
 

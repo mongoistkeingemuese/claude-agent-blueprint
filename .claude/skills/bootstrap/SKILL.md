@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: Project Onboarding Agent
+description: "Onboards a new or existing project: scans the codebase and generates the skill set + docs. Use when setting up the agent system in a fresh repo, or re-scanning an existing project to refresh its skills and documentation."
 ---
 
 # /bootstrap -- Project Onboarding Agent
@@ -38,7 +38,7 @@ Run a single Explore sub-agent:
 > 1. **Languages & frameworks:** package.json, Cargo.toml, requirements.txt, go.mod, *.csproj, etc.
 > 2. **Project structure:** top-level directories, src layout, test layout
 > 3. **Existing docs:** README.md, ARCHITECTURE.md, CLAUDE.md, docs/, wiki/
-> 4. **Existing skills:** .claude/commands/*.md
+> 4. **Existing skills:** .claude/skills/*/SKILL.md
 > 5. **Build & test commands:** scripts in package.json, Makefile, CI config, Dockerfile
 > 6. **Domain indicators:** ORM models, API routes, UI components, protocol handlers, DB migrations
 > 7. **Git history (brief):** last 20 commits for activity patterns, main contributors
@@ -139,7 +139,7 @@ After user approval, launch subagents in parallel. Group by independence:
 
 For each approved skill, launch a general-purpose sub-agent:
 
-> Create the skill file `.claude/commands/{skill}.md` for the project at `{ABS_PATH}`.
+> Create the skill file `.claude/skills/{skill}/SKILL.md` for the project at `{ABS_PATH}`.
 >
 > ## Context
 > - Project: {brief description from Phase 1}
@@ -333,7 +333,7 @@ RECOMMENDATIONS:
 ### 3c: Commit
 
 ```bash
-git add .claude/commands/*.md CLAUDE.md README.md docs/
+git add .claude/skills/*/SKILL.md CLAUDE.md README.md docs/
 git commit -m "chore: bootstrap agent system with skills and docs
 
 Skills: {list}

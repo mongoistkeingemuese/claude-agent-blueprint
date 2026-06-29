@@ -1,6 +1,6 @@
 ---
 name: review
-description: White-Box Code Review
+description: "White-box code review of an implementation against its plan: checks code quality, conventions, plan-version match, and prohibits acceptance-criteria changes. Use right after implementing a task, in parallel with black-box tests."
 ---
 
 # /review -- White-Box Code Review

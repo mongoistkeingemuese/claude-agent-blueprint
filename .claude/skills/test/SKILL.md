@@ -1,6 +1,6 @@
 ---
 name: test
-description: Black-Box Acceptance Tests
+description: "Black-box acceptance testing derived only from the plan, independent of the implementer: verifies behavior against acceptance criteria and checks plan-version. Use right after implementation, in parallel with white-box review."
 ---
 
 # /test -- Black-Box Acceptance Tests

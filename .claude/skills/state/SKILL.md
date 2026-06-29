@@ -1,6 +1,6 @@
 ---
 name: state
-description: Project Status and Process Monitoring
+description: "Read-only project status report: shows the queue, active task, current pipeline phase, and history from orchestrator_state.json. Use when you want to inspect progress without changing anything."
 ---
 
 # /state -- Project Status and Process Monitoring

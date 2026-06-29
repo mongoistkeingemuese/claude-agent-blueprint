@@ -1,6 +1,6 @@
 ---
 name: execute-task
-description: Fully Automated Task Execution
+description: "Executes a single planned task end-to-end on its own branch: implement, white-box review, black-box test, learn, merge. Use when a task (FEAT/BUG/REFAC) is planned and approved and you want it fully implemented and merged."
 ---
 
 # /execute-task -- Fully Automated Task Execution
@@ -60,7 +60,7 @@ Task has skill: null           --> normal feature cycle (inline implementation)
 ```
 
 **Customization:** Add your own specialists to this table. Each specialist is a
-`.claude/commands/{skill}.md` file that handles domain-specific implementation.
+`.claude/skills/{skill}/SKILL.md` file that handles domain-specific implementation.
 
 ---
 
@@ -273,7 +273,7 @@ Read task file. Check:
 
 **If TASK_SKILL is set:** delegate to specialist agent:
 
-> Read and follow `{ABS_PATH}/.claude/commands/{TASK_SKILL}.md`.
+> Read and follow `{ABS_PATH}/.claude/skills/{TASK_SKILL}/SKILL.md`.
 > Task-ID: {ID}
 > Task plan: {TASK_FILE}
 > Working directory: {WORKTREE_PATH}
@@ -393,7 +393,7 @@ On conflict: STATUS: blocked, recommend `/resolve {ID}`.
 
 Sub-Agent:
 
-> Read and follow `{ABS_PATH}/.claude/commands/review.md`.
+> Read and follow `{ABS_PATH}/.claude/skills/review/SKILL.md`.
 > Task plan: {TASK_FILE}
 > Working directory: {WORKTREE_PATH}
 > Skill: {TASK_SKILL}
@@ -440,7 +440,7 @@ git diff --name-only {BASE_BRANCH}...HEAD | grep -E "test_|\.test\." | head -5
 
 Sub-Agent:
 
-> Read and follow `{ABS_PATH}/.claude/commands/test.md`.
+> Read and follow `{ABS_PATH}/.claude/skills/test/SKILL.md`.
 > Task-ID: {ID}
 > Task plan: {TASK_FILE}
 > Working directory: {WORKTREE_PATH}
@@ -463,7 +463,7 @@ If STATUS = "fail":
 
 Sub-Agent:
 
-> Read and follow `{ABS_PATH}/.claude/commands/testfix.md`.
+> Read and follow `{ABS_PATH}/.claude/skills/testfix/SKILL.md`.
 > TASK_ID: {ID}
 > TASK_PLAN: {TASK_FILE}
 > WORKTREE: {WORKTREE_PATH}
@@ -607,7 +607,7 @@ Queue is archived in state.json under the task entry after Phase 6.
 
 Sub-Agent:
 
-> Read and follow `{ABS_PATH}/.claude/commands/learn.md`.
+> Read and follow `{ABS_PATH}/.claude/skills/learn/SKILL.md`.
 > Task-ID: {ID}
 > Task plan: {TASK_FILE}
 > Review result: {REVIEW_RESULT}

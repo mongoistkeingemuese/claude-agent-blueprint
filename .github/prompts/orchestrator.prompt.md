@@ -1,6 +1,8 @@
 ---
 name: orchestrator
-description: Autonomous Task Pipeline (Main Entrypoint)
+description: Autonomous Task Pipeline (Main Entrypoint). Use to process the task queue end-to-end -- build the queue, run each task via the execute-task skill, validate, retry, and report. Requires tool access (terminal, edits, git).
+agent: agent
+argument-hint: e.g. "only FEAT-003", "from REFAC-002", or empty for the full queue
 ---
 # Autonomous Task Pipeline
 
@@ -121,7 +123,7 @@ Take task ID from queue, move to `active`, status -> "in_progress".
 
 ### 2.2 Delegate to /execute-task (Sub-Agent)
 
-> Read and follow `{ABS_PATH}/execute-task skill`.
+> Read and follow `{ABS_PATH}/.claude/skills/execute-task/SKILL.md`.
 > Task-ID: {ID}
 > Working directory: {ABS_PATH}
 > `cd {ABS_PATH}` as first bash command.
@@ -367,16 +369,16 @@ pipeline run in one place for triage.
 
 ## Available Agent Skills
 You have access to the following skills. You must explicitly invoke them (e.g. "Delegating to the `[skill-name]` skill") when their domain is required by the pipeline:
-- **`learn`**: Post-Task Learning Agent
-- **`validate`**: Deep Plan Validation Against Codebase
-- **`execute-task`**: Fully Automated Task Execution
-- **`testfix`**: Intelligent Test Failure Analysis
-- **`state`**: Project Status and Process Monitoring
-- **`readme`**: Claude Agent System
-- **`resolve`**: Detect Merge Conflicts and Create Resolution Tasks
-- **`bootstrap`**: Project Onboarding Agent
-- **`task`**: Task Planning with Validation
-- **`review`**: White-Box Code Review
-- **`test`**: Black-Box Acceptance Tests
-- **`quick`**: Lightweight Change (No Pipeline)
+- **`state`**: Read-only project status report: shows the queue, active task, current pipeline phase, and history from orchestrator_state.json. Use when you want to inspect progress without changing anything.
+- **`resolve`**: Detects merge conflicts, analyzes their root cause, and creates resolution tasks for the pipeline (it does not resolve conflicts directly). Use when a branch merge hits conflicts that need systematic handling.
+- **`review`**: White-box code review of an implementation against its plan: checks code quality, conventions, plan-version match, and prohibits acceptance-criteria changes. Use right after implementing a task, in parallel with black-box tests.
+- **`test`**: Black-box acceptance testing derived only from the plan, independent of the implementer: verifies behavior against acceptance criteria and checks plan-version. Use right after implementation, in parallel with white-box review.
+- **`testfix`**: Analyzes failing tests one by one and decides per test whether to fix the code or the test, re-running after each code fix. Use when review or test reports test failures.
+- **`validate`**: Deep validation of a task plan against the actual codebase (8-check suite). Use to vet a plan before execution -- manually, or auto-triggered for complex tasks.
+- **`task`**: Plans a task with validation: defines acceptance criteria, edge cases, and a test spec, then sanity-checks the plan against the codebase. Use before implementing any non-trivial feature, bugfix, or refactor.
+- **`learn`**: Captures post-task learnings and writes actionable insights back into the agent skill files. Use after a task finishes to record what worked or failed so the agents improve over time.
+- **`readme`**: Reference overview of the Claude Agent System: architecture, the command/skill pipeline, state management, and quality gates. Use when you need to understand how the agent system fits together; this is reference material, not an executable workflow.
+- **`bootstrap`**: Onboards a new or existing project: scans the codebase and generates the skill set + docs. Use when setting up the agent system in a fresh repo, or re-scanning an existing project to refresh its skills and documentation.
+- **`quick`**: Handles a small, low-risk change directly with a short mandatory plan, bypassing the full task pipeline. Use for minor edits (typo, copy, tiny fix) that don't warrant a full plan/review/test/merge cycle.
+- **`execute-task`**: Executes a single planned task end-to-end on its own branch: implement, white-box review, black-box test, learn, merge. Use when a task (FEAT/BUG/REFAC) is planned and approved and you want it fully implemented and merged.
 

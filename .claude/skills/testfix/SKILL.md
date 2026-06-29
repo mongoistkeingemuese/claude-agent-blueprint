@@ -1,6 +1,6 @@
 ---
 name: testfix
-description: Intelligent Test Failure Analysis
+description: "Analyzes failing tests one by one and decides per test whether to fix the code or the test, re-running after each code fix. Use when review or test reports test failures."
 ---
 
 # /testfix -- Intelligent Test Failure Analysis

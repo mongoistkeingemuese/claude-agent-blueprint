@@ -1,6 +1,6 @@
 ---
 name: learn
-description: Post-Task Learning Agent
+description: "Captures post-task learnings and writes actionable insights back into the agent skill files. Use after a task finishes to record what worked or failed so the agents improve over time."
 ---
 
 # /learn -- Post-Task Learning Agent
@@ -62,17 +62,17 @@ Which agent MD(s) does the learning affect?
 
 | Agent | File | Type |
 |-------|------|------|
-| Orchestrator | `.claude/commands/orchestrator.md` | Queue management |
-| Execute-Task | `.claude/commands/execute-task.md` | Implementation, merge, workflow |
-| Task | `.claude/commands/task.md` | Planning, acceptance criteria, edge cases |
-| Validate | `.claude/commands/validate.md` | Deep plan validation |
-| Review | `.claude/commands/review.md` | White-box code review, conventions |
-| Test | `.claude/commands/test.md` | Black-box testing, test patterns |
-| Testfix | `.claude/commands/testfix.md` | Test failure analysis |
-| Learn | `.claude/commands/learn.md` | Self-improvement |
-| State | `.claude/commands/state.md` | Status display |
-| Resolve | `.claude/commands/resolve.md` | Merge conflicts |
-| *(your specialists)* | `.claude/commands/{skill}.md` | Domain-specific |
+| Orchestrator | `.github/prompts/orchestrator.prompt.md` | Queue management |
+| Execute-Task | `.claude/skills/execute-task/SKILL.md` | Implementation, merge, workflow |
+| Task | `.claude/skills/task/SKILL.md` | Planning, acceptance criteria, edge cases |
+| Validate | `.claude/skills/validate/SKILL.md` | Deep plan validation |
+| Review | `.claude/skills/review/SKILL.md` | White-box code review, conventions |
+| Test | `.claude/skills/test/SKILL.md` | Black-box testing, test patterns |
+| Testfix | `.claude/skills/testfix/SKILL.md` | Test failure analysis |
+| Learn | `.claude/skills/learn/SKILL.md` | Self-improvement |
+| State | `.claude/skills/state/SKILL.md` | Status display |
+| Resolve | `.claude/skills/resolve/SKILL.md` | Merge conflicts |
+| *(your specialists)* | `.claude/skills/{skill}/SKILL.md` | Domain-specific |
 
 ---
 

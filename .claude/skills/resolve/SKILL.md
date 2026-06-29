@@ -1,6 +1,6 @@
 ---
 name: resolve
-description: Detect Merge Conflicts and Create Resolution Tasks
+description: "Detects merge conflicts, analyzes their root cause, and creates resolution tasks for the pipeline (it does not resolve conflicts directly). Use when a branch merge hits conflicts that need systematic handling."
 ---
 
 # /resolve -- Detect Merge Conflicts and Create Resolution Tasks

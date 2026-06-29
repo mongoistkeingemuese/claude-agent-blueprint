@@ -1,6 +1,6 @@
 ---
 name: task
-description: Task Planning with Validation
+description: "Plans a task with validation: defines acceptance criteria, edge cases, and a test spec, then sanity-checks the plan against the codebase. Use before implementing any non-trivial feature, bugfix, or refactor."
 ---
 
 # /task -- Task Planning with Validation
@@ -42,7 +42,7 @@ Briefly justify the categorization.
 If no skill detected: `SKILL` -> `null`
 
 **Customization:** Define trigger keywords that map to your specialist agents.
-Each skill corresponds to a `.claude/commands/{skill}.md` file.
+Each skill corresponds to a `.claude/skills/{skill}/SKILL.md` file.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: validate
-description: Deep Plan Validation Against Codebase
+description: "Deep validation of a task plan against the actual codebase (8-check suite). Use to vet a plan before execution -- manually, or auto-triggered for complex tasks."
 ---
 
 # /validate -- Deep Plan Validation Against Codebase
